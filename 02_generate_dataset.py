@@ -31,7 +31,7 @@ class SamplingAgent(scip.Branchrule):
         self.khalil_root_buffer = {}
 
     def branchexeclp(self, allowaddcons):
-
+        """Retrieve the total number of processed nodes."""
         if self.model.getNNodes() == 1:
             # initialize root buffer for Khalil features extraction
             utilities.extract_khalil_variable_features(self.model, [], self.khalil_root_buffer)
@@ -111,11 +111,15 @@ def make_samples(in_queue, out_queue):
         print(f'[w {os.getpid()}] episode {episode}, seed {seed}, processing instance \'{instance}\'...')
 
         m = scip.Model()
-        m.setIntParam('display/verblevel', 0)
+        """Set an int-valued parameter.
+                :param name: name of parameter
+                :param value: value of parameter
+        """
+        m.setIntParam('display/verblevel', 0)       #**< verbosity level of output */
         m.readProblem(f'{instance}')
         utilities.init_scip_params(m, seed=seed)
-        m.setIntParam('timing/clocktype', 2)
-        m.setRealParam('limits/time', time_limit)
+        m.setIntParam('timing/clocktype', 2)        #/**< default clock type to use */
+        m.setRealParam('limits/time', time_limit)   #/**< maximal time in seconds to run */
 
         branchrule = SamplingAgent(
             episode=episode,
@@ -126,6 +130,14 @@ def make_samples(in_queue, out_queue):
             query_expert_prob=query_expert_prob,
             out_dir=out_dir)
 
+        """Include a branching rule.
+                :param Branchrule branchrule: branching rule
+                :param name: name of branching rule
+                :param desc: description of branching rule
+                :param priority: priority of branching rule
+                :param maxdepth: maximal depth level up to which this branching rule should be used (or -1)
+                :param maxbounddist: maximal relative distance from current node's dual bound to primal bound compared to best node's dual bound for applying branching rule (0.0: only on current best node, 1.0: on all nodes)
+        """
         m.includeBranchrule(
             branchrule=branchrule,
             name="Sampling branching rule", desc="",
@@ -143,8 +155,9 @@ def make_samples(in_queue, out_queue):
             'instance': instance,
             'seed': seed,
         })
-
+        """Optimize the problem."""
         m.optimize()
+        """Frees problem and solution process data"""
         m.freeProb()
 
         print(f"[w {os.getpid()}] episode {episode} done, {branchrule.sample_counter} samples")
@@ -183,6 +196,7 @@ def send_orders(orders_queue, instances, seed, exploration_policy, query_expert_
 
     episode = 0
     while True:
+        """从instances列表中随机抽取一个instance"""
         instance = rng.choice(instances)
         seed = rng.randint(2**32)
         orders_queue.put([episode, instance, seed, exploration_policy, query_expert_prob, time_limit, out_dir])
